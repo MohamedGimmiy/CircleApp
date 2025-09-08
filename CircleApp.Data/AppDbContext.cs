@@ -16,6 +16,7 @@ namespace CircleApp.Data
 
         public DbSet<Comment> Comments { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<Report> Reports { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -57,7 +58,7 @@ namespace CircleApp.Data
 
 
             modelBuilder.Entity<Favorite>()
-                .HasKey(f => new {f.PostId, f.UserId});
+                .HasKey(f => new { f.PostId, f.UserId });
 
 
             modelBuilder.Entity<Favorite>()
@@ -70,6 +71,24 @@ namespace CircleApp.Data
             modelBuilder.Entity<Favorite>()
                 .HasOne(f => f.User)
                 .WithMany(f => f.Favorites)
+                .HasForeignKey(P => P.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            modelBuilder.Entity<Report>()
+            .HasKey(f => new { f.PostId, f.UserId });
+
+
+            modelBuilder.Entity<Report>()
+                .HasOne(f => f.Post)
+                .WithMany(n => n.Reports)
+                .HasForeignKey(P => P.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            modelBuilder.Entity<Report>()
+                .HasOne(f => f.User)
+                .WithMany(f => f.Reports)
                 .HasForeignKey(P => P.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 

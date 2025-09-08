@@ -22,11 +22,12 @@ namespace CircleApp.Controllers
             int loggedInUser = 1;
             var allPosts = await  _context
                 .Posts
-                .Where(n => n.IsPrivate == false || n.UserId == loggedInUser)
+                .Where(n => (n.IsPrivate == false || n.UserId == loggedInUser) && n.Reports.Count < 5)
                 .Include(n => n.User)
                 .Include(n => n.Likes)
                 .Include(n => n.Comments).ThenInclude(n => n.User)
                 .Include(n=> n.Favorites)
+                .Include(n => n.Reports)
                 .OrderByDescending(p => p.DateCreated)
                 .ToListAsync();
             return View(allPosts);
@@ -158,6 +159,22 @@ namespace CircleApp.Controllers
                 DateUpdated = DateTime.UtcNow,
             };
             await _context.Comments.AddAsync(newComment);
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddPostReport(PostReportVM postReportVM)
+        {
+            int loggedInUser = 1;
+
+            var newReport = new Report()
+            {
+                PostId = postReportVM.PostId,
+                UserId = loggedInUser,
+                DateCreated = DateTime.UtcNow,
+            };
+            await _context.Reports.AddAsync(newReport);
             await _context.SaveChangesAsync();
             return RedirectToAction("Index");
         }
