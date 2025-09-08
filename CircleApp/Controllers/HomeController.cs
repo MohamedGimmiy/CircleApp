@@ -22,7 +22,8 @@ namespace CircleApp.Controllers
             int loggedInUser = 1;
             var allPosts = await  _context
                 .Posts
-                .Where(n => (n.IsPrivate == false || n.UserId == loggedInUser) && n.Reports.Count < 5)
+                .Where(n => (n.IsPrivate == false || n.UserId == loggedInUser) 
+                && n.Reports.Count < 5 && !n.IsDeleted)
                 .Include(n => n.User)
                 .Include(n => n.Likes)
                 .Include(n => n.Comments).ThenInclude(n => n.User)
@@ -194,7 +195,19 @@ namespace CircleApp.Controllers
             return RedirectToAction("Index");
         }
 
+        [HttpPost]
+        public async Task<IActionResult> PostRemove(PostRemoveVM postRemoveVM)
+        {
+            var post = await _context.Posts.FirstOrDefaultAsync(n => n.Id == postRemoveVM.PostId);
 
+            if ((post != null))
+            {
+                post.IsDeleted = true;
+                 _context.Posts.Update(post);
+                await _context.SaveChangesAsync();
+            }
 
+            return RedirectToAction("Index");
+        }
     }
 }
