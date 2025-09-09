@@ -53,7 +53,7 @@ namespace CircleApp.Controllers
                 string rootFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 if (post.Image.ContentType.Contains("image"))
                 {
-                    string rootFolderPathImages = Path.Combine(rootFolderPath, "images/Uploaded");
+                    string rootFolderPathImages = Path.Combine(rootFolderPath, "images/posts");
                     Directory.CreateDirectory(rootFolderPathImages);
                     string fileName = Guid.NewGuid().ToString() + Path.GetExtension(post.Image.FileName);
 
@@ -61,7 +61,7 @@ namespace CircleApp.Controllers
 
                     using(var stream = new FileStream(filePath, FileMode.Create))
                         await post.Image.CopyToAsync(stream);
-                    newPost.ImageUrl = "/images/Uploaded/" + fileName;
+                    newPost.ImageUrl = "/images/posts/" + fileName;
 
 
                 }
