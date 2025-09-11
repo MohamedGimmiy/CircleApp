@@ -18,6 +18,7 @@ namespace CircleApp.Data
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<Story> Stories { get; set; }
+        public DbSet<HashTag> Hashtags { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()

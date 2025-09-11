@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CircleApp.Data;
+using CircleApp.Data.Helpers;
 using CircleApp.Data.Models;
 using CircleApp.ViewModels.Home;
 using Microsoft.AspNetCore.Mvc;
@@ -65,11 +66,37 @@ namespace CircleApp.Controllers
 
 
                 }
-
+                
             }
             await _context.Posts.AddAsync(newPost);
             await _context.SaveChangesAsync();
 
+
+            var postHashtags = HashtagHelper.GetHashtags(post.Content);
+            foreach(var hashtag in postHashtags)
+            {
+                var hashtagDb = await _context.Hashtags.FirstOrDefaultAsync(n => n.Name == hashtag);
+                if (hashtagDb != null)
+                {
+                    hashtagDb.Count++;
+                    hashtagDb.DateUpdated = DateTime.UtcNow;
+                    _context.Hashtags.Update(hashtagDb);
+                    await _context.SaveChangesAsync();
+                } else
+                {
+                    var newHashtag = new HashTag()
+                    {
+                        Name = hashtag,
+                        Count = 1,
+                        DateCreated = DateTime.UtcNow,
+                        DateUpdated = DateTime.UtcNow,
+                    };
+
+                    await _context.Hashtags.AddAsync(newHashtag);
+                    await _context.SaveChangesAsync();
+                }
+
+            }
             //redirect use to home page
             return RedirectToAction("Index");
         }
@@ -205,6 +232,21 @@ namespace CircleApp.Controllers
                 post.IsDeleted = true;
                  _context.Posts.Update(post);
                 await _context.SaveChangesAsync();
+
+                var postHashtags = HashtagHelper.GetHashtags(post.Content);
+                foreach (var hashtag in postHashtags)
+                {
+                    var hashTagDb = await _context.Hashtags.FirstOrDefaultAsync(h => h.Name == hashtag);
+
+                    if (hashTagDb != null)
+                    {
+                        hashTagDb.Count--;
+                        hashTagDb.DateUpdated = DateTime.UtcNow;
+                        _context.Hashtags.Update(hashTagDb);
+                        await _context.SaveChangesAsync();
+                    }
+
+                }
             }
 
             return RedirectToAction("Index");
