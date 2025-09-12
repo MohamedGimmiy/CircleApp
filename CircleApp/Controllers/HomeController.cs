@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using CircleApp.Data;
 using CircleApp.Data.Helpers;
+using CircleApp.Data.Helpers.Enums;
 using CircleApp.Data.Models;
+using CircleApp.Data.Services;
 using CircleApp.ViewModels.Home;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,27 +13,24 @@ namespace CircleApp.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private readonly AppDbContext _context;
-        public HomeController(ILogger<HomeController> logger, AppDbContext context )
+        private readonly IPostsService _postsService;
+        private readonly IHashtagsService _hashtagsService;
+        private readonly IFilesService _filesService;
+        public HomeController(ILogger<HomeController> logger,
+            IPostsService postsService,
+            IHashtagsService hashtagsService,
+            IFilesService filesService)
         {
             _logger = logger;
-            _context = context;
+            _postsService = postsService;
+            _hashtagsService = hashtagsService;
+            _filesService = filesService;
         }
 
         public async Task<IActionResult> Index()
         {
             int loggedInUser = 1;
-            var allPosts = await  _context
-                .Posts
-                .Where(n => (n.IsPrivate == false || n.UserId == loggedInUser) 
-                && n.Reports.Count < 5 && !n.IsDeleted)
-                .Include(n => n.User)
-                .Include(n => n.Likes)
-                .Include(n => n.Comments).ThenInclude(n => n.User)
-                .Include(n=> n.Favorites)
-                .Include(n => n.Reports)
-                .OrderByDescending(p => p.DateCreated)
-                .ToListAsync();
+            var allPosts = await _postsService.GetAllPostsAsync(loggedInUser);
             return View(allPosts);
         }
 
@@ -39,64 +38,22 @@ namespace CircleApp.Controllers
         public async Task<IActionResult> CreatePost(PostVM post)
         {
             int loggedInUser = 1;
+
+            var imageUploadPath = await _filesService.UploadImageAsync(post.Image, ImageFileType.PostImage);
             var newPost = new Post
             {
                 Content = post.Content,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow,
                 UserId = loggedInUser,
-                ImageUrl = "",
+                ImageUrl = imageUploadPath,
                 NrOfReports = 0,
             };
 
-            if(post.Image != null && post.Image.Length >0)
-            {
-                string rootFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                if (post.Image.ContentType.Contains("image"))
-                {
-                    string rootFolderPathImages = Path.Combine(rootFolderPath, "images/posts");
-                    Directory.CreateDirectory(rootFolderPathImages);
-                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(post.Image.FileName);
 
-                    string filePath = Path.Combine(rootFolderPathImages, fileName);
-
-                    using(var stream = new FileStream(filePath, FileMode.Create))
-                        await post.Image.CopyToAsync(stream);
-                    newPost.ImageUrl = "/images/posts/" + fileName;
-
-
-                }
-                
-            }
-            await _context.Posts.AddAsync(newPost);
-            await _context.SaveChangesAsync();
-
-
-            var postHashtags = HashtagHelper.GetHashtags(post.Content);
-            foreach(var hashtag in postHashtags)
-            {
-                var hashtagDb = await _context.Hashtags.FirstOrDefaultAsync(n => n.Name == hashtag);
-                if (hashtagDb != null)
-                {
-                    hashtagDb.Count++;
-                    hashtagDb.DateUpdated = DateTime.UtcNow;
-                    _context.Hashtags.Update(hashtagDb);
-                    await _context.SaveChangesAsync();
-                } else
-                {
-                    var newHashtag = new HashTag()
-                    {
-                        Name = hashtag,
-                        Count = 1,
-                        DateCreated = DateTime.UtcNow,
-                        DateUpdated = DateTime.UtcNow,
-                    };
-
-                    await _context.Hashtags.AddAsync(newHashtag);
-                    await _context.SaveChangesAsync();
-                }
-
-            }
+            await _postsService.CreatePostAsync(newPost);
+            await _hashtagsService.ProcessHashtagsForNewPostAsync(post.Content);
+            
             //redirect use to home page
             return RedirectToAction("Index");
         }
@@ -106,24 +63,8 @@ namespace CircleApp.Controllers
         {
             int loggedInUser = 1;
 
-            var like = await _context.Likes
-                .Where(l => l.PostId == postLikeVM.PostId && l.UserId == loggedInUser)
-                .FirstOrDefaultAsync();
-
-            if ((like  != null))
-            {
-                 _context.Likes.Remove(like);
-                await _context.SaveChangesAsync();
-            } else
-            {
-                var newLike = new Like()
-                {
-                    PostId = postLikeVM.PostId,
-                    UserId = loggedInUser,
-                };
-                await _context.Likes.AddAsync(newLike);
-                await _context.SaveChangesAsync();
-            }
+            await _postsService.TogglePostLikeAsync(postLikeVM.PostId,loggedInUser);
+            
             return RedirectToAction("Index");
         }
 
@@ -132,25 +73,9 @@ namespace CircleApp.Controllers
         {
             int loggedInUser = 1;
 
-            var favorite = await _context.Favorites
-                .Where(l => l.PostId == postFavoriteVM.PostId && l.UserId == loggedInUser)
-                .FirstOrDefaultAsync();
+            await _postsService.TogglePostFavoriteAsync(postFavoriteVM.PostId, loggedInUser);
 
-            if ((favorite != null))
-            {
-                _context.Favorites.Remove(favorite);
-                await _context.SaveChangesAsync();
-            }
-            else
-            {
-                var newFavorite = new Favorite()
-                {
-                    PostId = postFavoriteVM.PostId,
-                    UserId = loggedInUser,
-                };
-                await _context.Favorites.AddAsync(newFavorite);
-                await _context.SaveChangesAsync();
-            }
+           
             return RedirectToAction("Index");
         }
 
@@ -160,16 +85,7 @@ namespace CircleApp.Controllers
         {
             int loggedInUser = 1;
 
-            var post = await _context.Posts
-                .Where(l => l.Id == postVisiblilityVM.PostId && l.UserId == loggedInUser)
-                .FirstOrDefaultAsync();
-
-            if ((post != null))
-            {
-                post.IsPrivate = !post.IsPrivate;
-                _context.Posts.Update(post);
-                await _context.SaveChangesAsync();
-            }
+            await _postsService.TogglePostVisibilityAsync(postVisiblilityVM.PostId, loggedInUser);
             return RedirectToAction("Index");
         }
 
@@ -186,8 +102,8 @@ namespace CircleApp.Controllers
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow,
             };
-            await _context.Comments.AddAsync(newComment);
-            await _context.SaveChangesAsync();
+            await _postsService.AddPostCommentAsync(newComment);
+
             return RedirectToAction("Index");
         }
 
@@ -195,60 +111,23 @@ namespace CircleApp.Controllers
         public async Task<IActionResult> AddPostReport(PostReportVM postReportVM)
         {
             int loggedInUser = 1;
-
-            var newReport = new Report()
-            {
-                PostId = postReportVM.PostId,
-                UserId = loggedInUser,
-                DateCreated = DateTime.UtcNow,
-            };
-            await _context.Reports.AddAsync(newReport);
-            await _context.SaveChangesAsync();
+            await _postsService.ReportPostAsync(postReportVM.PostId, loggedInUser);
             return RedirectToAction("Index");
         }
 
         [HttpPost]
         public async Task<IActionResult> RemovePostComment(int commentId)
         {
-            var commentDb = await _context.Comments
-                .Where(n => n.Id == commentId).FirstOrDefaultAsync();
-
-
-            if(commentDb != null)
-            {
-                _context.Comments.Remove(commentDb);
-                await _context.SaveChangesAsync();
-            }
+            await  _postsService.RemovePostCommentAsync(commentId);
             return RedirectToAction("Index");
         }
 
         [HttpPost]
         public async Task<IActionResult> PostRemove(PostRemoveVM postRemoveVM)
         {
-            var post = await _context.Posts.FirstOrDefaultAsync(n => n.Id == postRemoveVM.PostId);
+            var postRemoved = await _postsService.RemovePostAsync(postRemoveVM.PostId);
 
-            if ((post != null))
-            {
-                post.IsDeleted = true;
-                 _context.Posts.Update(post);
-                await _context.SaveChangesAsync();
-
-                var postHashtags = HashtagHelper.GetHashtags(post.Content);
-                foreach (var hashtag in postHashtags)
-                {
-                    var hashTagDb = await _context.Hashtags.FirstOrDefaultAsync(h => h.Name == hashtag);
-
-                    if (hashTagDb != null)
-                    {
-                        hashTagDb.Count--;
-                        hashTagDb.DateUpdated = DateTime.UtcNow;
-                        _context.Hashtags.Update(hashTagDb);
-                        await _context.SaveChangesAsync();
-                    }
-
-                }
-            }
-
+            await _hashtagsService.ProcessHashtagsForRemovePostAsync(postRemoved.Content);
             return RedirectToAction("Index");
         }
     }
