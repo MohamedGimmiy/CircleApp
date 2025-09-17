@@ -5,11 +5,13 @@ using CircleApp.Data.Helpers.Enums;
 using CircleApp.Data.Models;
 using CircleApp.Data.Services;
 using CircleApp.ViewModels.Home;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CircleApp.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
@@ -32,6 +34,13 @@ namespace CircleApp.Controllers
             int loggedInUser = 1;
             var allPosts = await _postsService.GetAllPostsAsync(loggedInUser);
             return View(allPosts);
+        }
+
+        public async Task<IActionResult> Details(int postId)
+        {
+            var post = await _postsService.GetPostByIdAsync(postId);
+
+            return View(post);
         }
 
         [HttpPost]

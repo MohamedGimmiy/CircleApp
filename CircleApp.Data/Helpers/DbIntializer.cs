@@ -1,4 +1,6 @@
-﻿using CircleApp.Data.Models;
+﻿using CircleApp.Data.Helpers.Constants;
+using CircleApp.Data.Models;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,58 @@ namespace CircleApp.Data.Helpers
 {
     public static class DbIntializer
     {
+
+        public static async Task SeedUsersAndRoles(UserManager<User> userManager,
+            RoleManager<IdentityRole<int>> roleManager)
+        {
+            //roles
+            if (!roleManager.Roles.Any())
+            {
+                foreach (var roleName in AppRoles.All)
+                {
+                    if(!await roleManager.RoleExistsAsync(roleName))
+                    {
+                        await roleManager.CreateAsync(new IdentityRole<int>(roleName));
+                    }
+                }
+            }
+            //Users with Roles
+            if(!userManager.Users.Any(n => !string.IsNullOrEmpty(n.Email)))
+            {
+                var userPassword = "Asd1234@";
+                var newUser = new User()
+                {
+                    UserName = "mohamed.gamal",
+                    Email = "m1@yahoo.com",
+                    FullName = "Mohamed Gamal",
+                    ProfilePictureUrl = "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_incoming&w=740&q=80",
+                    EmailConfirmed = true,
+                };
+                var result = await userManager.CreateAsync(newUser, userPassword);
+
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(newUser, AppRoles.User);
+                }
+
+
+
+                var newAdmin = new User()
+                {
+                    UserName = "admin.admin",
+                    Email = "admin@yahoo.com",
+                    FullName = "Mohamed Admin",
+                    ProfilePictureUrl = "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_incoming&w=740&q=80",
+                    EmailConfirmed = true,
+                };
+                var resultNewAdmin = await userManager.CreateAsync(newAdmin, userPassword);
+
+                if (resultNewAdmin.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(newAdmin, AppRoles.Admin);
+                }
+            }
+        }
         public async static Task SeedAsync(AppDbContext appDbContext)
         {
             if (!appDbContext.Users.Any() && !appDbContext.Posts.Any())

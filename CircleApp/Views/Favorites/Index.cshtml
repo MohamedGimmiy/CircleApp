@@ -31,12 +31,13 @@
                     <div class="bg-white rounded-xl shadow-sm md:p-4 p-2 space-y-4 text-sm font-medium border1" style="width: 580px;">
                         Currently, there are no posts available. Would you like to create the first one?
                     </div>
-                } else
+                }
+                else
                 {
                     @foreach (var post in Model)
                     {
-                        <partial name="Home/_Post" model="post"
-                        view-data='new ViewDataDictionary(ViewData){{"ShowAllComments" , false}}'/>
+                        <partial name="Home/_Post" model="post" 
+                        view-data='new ViewDataDictionary(ViewData) { { "ShowAllComments", false } }' />
                     }
                 }
 

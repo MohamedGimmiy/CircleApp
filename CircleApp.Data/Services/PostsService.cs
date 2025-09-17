@@ -30,7 +30,41 @@ namespace CircleApp.Data.Services
 
             return allPosts;
         }
+        public async Task<Post> GetPostByIdAsync(int postId)
+        {
+            var postDb = await _context
+                            .Posts
+                            .Include(n => n.User)
+                            .Include(n => n.Likes)
+                            .Include(n => n.Comments).ThenInclude(n => n.User)
+                            .Include(n => n.Favorites)
+                            .FirstOrDefaultAsync(n => n.Id == postId);
 
+            return postDb;
+        }
+        public async Task<List<Post>> GetAllFavoritedPostsAsync(int loggedInUserId)
+        {
+
+
+            var favoritedPosts = await _context.Favorites
+                .Include(n => n.Post.Reports)
+                    .Include(n => n.Post.User)
+                    .Include(p => p.Post.Comments)
+                        .ThenInclude(c => c.User)
+                    .Include(n => n.Post.Likes)
+                    .Include(n => n.Post.Favorites)
+                .Where(n => n.UserId == loggedInUserId && 
+                !n.Post.IsDeleted && 
+                n.Post.Reports.Count < 5)
+                .OrderByDescending(n=> n.DateCreated)
+                .Select(n => n.Post)
+
+                .ToListAsync();
+
+
+
+            return favoritedPosts;
+        }
         public async Task<Post> CreatePostAsync(Post post)
         {
             await _context.Posts.AddAsync(post);
@@ -96,6 +130,7 @@ namespace CircleApp.Data.Services
                 {
                     PostId = postId,
                     UserId = userId,
+                    DateCreated = DateTime.UtcNow
                 };
                 await _context.Favorites.AddAsync(newFavorite);
                 await _context.SaveChangesAsync();
@@ -138,5 +173,7 @@ namespace CircleApp.Data.Services
                 await _context.SaveChangesAsync();
             }
         }
+
+
     }
 }

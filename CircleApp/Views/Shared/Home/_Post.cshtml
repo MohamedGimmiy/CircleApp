@@ -15,6 +15,7 @@
     bool isLiked = Model.Likes.Any(nameof => nameof.UserId == 1);
     bool isPrivate = Model.IsPrivate == true && Model.UserId == 1;
     bool isReported = Model.Reports.Any(n => n.UserId == 1);
+    bool showAllComments = ViewData["ShowAllComments"] as bool? ?? false;
 }
 
 <div class="bg-white rounded-xl shadow-sm text-sm font-medium border1">
@@ -64,7 +65,7 @@
     </div>
 
     @* Post content *@
-    <a>
+    <a asp-action="Details" asp-controller="Home" asp-route-postId="@Model.Id">
         <div class="sm:px-4 p-2.5 pt-0 w-full">
             <p class="font-normal">
                 @Model.Content
@@ -74,8 +75,8 @@
 
     @if (!string.IsNullOrEmpty(Model.ImageUrl))
     {
-        <a>
-            <div class="relative w-full lg:h-96 h-full sm:px-4">
+        <a asp-controller="Home" asp-action="Details" asp-route-postId="@Model.Id">
+            <div class="relative w-full h-full">
                 <img src="@Model.ImageUrl" class="sm:rounded-lg w-full h-full object-cover" />
             </div>
         </a>
@@ -127,7 +128,9 @@
 
         <div  class="p-2.5 border-t border-gray-100 font-normal space-y-3 relative">
 
-            @foreach(var comment in Model.Comments.OrderByDescending(n => n.DateCreated).Take(3))
+            @foreach (var comment in showAllComments ? 
+            Model.Comments.OrderByDescending(n => n.DateCreated)
+            : Model.Comments.OrderByDescending(n => n.DateCreated).Take(2))
             {
                 TimeSpan commentTimeSpanSincePosted = DateTime.UtcNow.Subtract(comment.DateCreated);
 
@@ -167,10 +170,10 @@
                 </div>
             }
 
-            @if(Model.Comments.Count >= 3)
+            @if (Model.Comments.Count >= 3 && !showAllComments)
             {
                 <div class="p-1.5">
-                    <a>
+                    <a asp-controller="Home" asp-action="Details" asp-route-postId="@Model.Id">
                         Show all comments
                     </a>
                 </div>
