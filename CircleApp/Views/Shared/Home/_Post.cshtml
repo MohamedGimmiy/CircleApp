@@ -1,6 +1,8 @@
 ﻿@model Post
-
+@using System.Security.Claims;
 @{
+    int loggedInUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int result) ? result : 0;
+
     TimeSpan timeSpanSincePosted = DateTime.UtcNow.Subtract(Model.DateCreated);
 
     string displayTime = timeSpanSincePosted switch
@@ -11,11 +13,12 @@
         _ => "Just now"
     };
 
-    bool isFavorited = Model.Favorites.Any(nameof => nameof.UserId == 1);
-    bool isLiked = Model.Likes.Any(nameof => nameof.UserId == 1);
-    bool isPrivate = Model.IsPrivate == true && Model.UserId == 1;
-    bool isReported = Model.Reports.Any(n => n.UserId == 1);
+    bool isFavorited = Model.Favorites.Any(n => n.UserId == loggedInUserId);
+    bool isLiked = Model.Likes.Any(n => n.UserId == loggedInUserId);
+    bool isPrivate = Model.IsPrivate == true && Model.UserId == loggedInUserId;
+    bool isReported = Model.Reports.Any(n => n.UserId == loggedInUserId);
     bool showAllComments = ViewData["ShowAllComments"] as bool? ?? false;
+
 }
 
 <div class="bg-white rounded-xl shadow-sm text-sm font-medium border1">

@@ -31,11 +31,13 @@ namespace CircleApp.Controllers
             {
                 return View(loginVM);
             }
-            var result = await _signInManager.PasswordSignInAsync(loginVM.Email,
+
+            var existingUser = await _userManager.FindByEmailAsync(loginVM.Email);
+
+            var result = await _signInManager.PasswordSignInAsync(existingUser.UserName,
                 loginVM.Password, 
                 false, 
                 false);
-            var existingUser = await _userManager.FindByEmailAsync(loginVM.Email);
 
             if (existingUser == null)
             {
@@ -143,6 +145,30 @@ namespace CircleApp.Controllers
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction("Login");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileVM profileVM)
+        {
+            var loggedInUser = await _userManager.GetUserAsync(User);
+
+            if (loggedInUser == null)
+            {
+                RedirectToAction("Login");
+            }
+            loggedInUser.FullName = profileVM.FullName;
+            loggedInUser.UserName = profileVM.UserName;
+            loggedInUser.Bio = profileVM.Bio;
+            var result = await _userManager.UpdateAsync(loggedInUser);
+
+            if (!result.Succeeded)
+            {
+                TempData["UserProfileError"] = "User profile could not be updated";
+                TempData["ActiveTab"] = "Profile";
+                return RedirectToAction("Index", "Settings");
+            }
+            await _signInManager.RefreshSignInAsync(loggedInUser);
+            return RedirectToAction("Index", "Settings");
         }
     }
 }

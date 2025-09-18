@@ -1,18 +1,16 @@
-using System.Diagnostics;
-using CircleApp.Data;
-using CircleApp.Data.Helpers;
+using CircleApp.Controllers.Base;
 using CircleApp.Data.Helpers.Enums;
 using CircleApp.Data.Models;
 using CircleApp.Data.Services;
 using CircleApp.ViewModels.Home;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+
 
 namespace CircleApp.Controllers
 {
     [Authorize]
-    public class HomeController : Controller
+    public class HomeController : BaseController
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IPostsService _postsService;
@@ -31,8 +29,13 @@ namespace CircleApp.Controllers
 
         public async Task<IActionResult> Index()
         {
-            int loggedInUser = 1;
-            var allPosts = await _postsService.GetAllPostsAsync(loggedInUser);
+            var loggedInUser =GetUserId();
+
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
+            var allPosts = await _postsService.GetAllPostsAsync(loggedInUser.Value);
             return View(allPosts);
         }
 
@@ -46,15 +49,19 @@ namespace CircleApp.Controllers
         [HttpPost]
         public async Task<IActionResult> CreatePost(PostVM post)
         {
-            int loggedInUser = 1;
+            var loggedInUser = GetUserId();
 
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
             var imageUploadPath = await _filesService.UploadImageAsync(post.Image, ImageFileType.PostImage);
             var newPost = new Post
             {
                 Content = post.Content,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow,
-                UserId = loggedInUser,
+                UserId = loggedInUser.Value,
                 ImageUrl = imageUploadPath,
                 NrOfReports = 0,
             };
@@ -70,9 +77,13 @@ namespace CircleApp.Controllers
         [HttpPost]
         public async Task<IActionResult> TogglePostLike(PostLikeVM postLikeVM)
         {
-            int loggedInUser = 1;
+            var loggedInUser = GetUserId();
 
-            await _postsService.TogglePostLikeAsync(postLikeVM.PostId,loggedInUser);
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
+            await _postsService.TogglePostLikeAsync(postLikeVM.PostId,loggedInUser.Value);
             
             return RedirectToAction("Index");
         }
@@ -80,9 +91,13 @@ namespace CircleApp.Controllers
         [HttpPost]
         public async Task<IActionResult> TogglePostFavorite(PostFavoriteVM postFavoriteVM)
         {
-            int loggedInUser = 1;
+            var loggedInUser = GetUserId();
 
-            await _postsService.TogglePostFavoriteAsync(postFavoriteVM.PostId, loggedInUser);
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
+            await _postsService.TogglePostFavoriteAsync(postFavoriteVM.PostId, loggedInUser.Value);
 
            
             return RedirectToAction("Index");
@@ -92,22 +107,30 @@ namespace CircleApp.Controllers
         [HttpPost]
         public async Task<IActionResult> TogglePostVisibility(PostVisiblilityVM postVisiblilityVM)
         {
-            int loggedInUser = 1;
+            var loggedInUser = GetUserId();
 
-            await _postsService.TogglePostVisibilityAsync(postVisiblilityVM.PostId, loggedInUser);
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
+            await _postsService.TogglePostVisibilityAsync(postVisiblilityVM.PostId, loggedInUser.Value);
             return RedirectToAction("Index");
         }
 
         [HttpPost]
         public async Task<IActionResult> AddPostComment(PostCommentVM postCommentVM)
         {
-            int loggedInUser = 1;
+            var loggedInUser = GetUserId();
 
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
             var newComment = new Comment()
             {
                 PostId = postCommentVM.PostId,
                 Content = postCommentVM.Content,
-                UserId = loggedInUser,
+                UserId = loggedInUser.Value,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow,
             };
@@ -119,8 +142,13 @@ namespace CircleApp.Controllers
         [HttpPost]
         public async Task<IActionResult> AddPostReport(PostReportVM postReportVM)
         {
-            int loggedInUser = 1;
-            await _postsService.ReportPostAsync(postReportVM.PostId, loggedInUser);
+            var loggedInUser = GetUserId();
+
+            if (loggedInUser == null)
+            {
+                return RedirectToLogin();
+            }
+            await _postsService.ReportPostAsync(postReportVM.PostId, loggedInUser.Value);
             return RedirectToAction("Index");
         }
 
