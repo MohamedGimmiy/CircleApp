@@ -22,6 +22,23 @@ namespace CircleApp.Data.Services
             return await _context.Users.FirstOrDefaultAsync(n => n.Id == loggedInUserId) ?? new User();
         }
 
+        public async Task<List<Post>> GetUserPosts(int userId)
+        {
+            var allPosts = await _context
+                            .Posts
+                            .Where(n =>  n.UserId == userId
+                            && n.Reports.Count < 5 && !n.IsDeleted)
+                            .Include(n => n.User)
+                            .Include(n => n.Likes)
+                            .Include(n => n.Comments).ThenInclude(n => n.User)
+                            .Include(n => n.Favorites)
+                            .Include(n => n.Reports)
+                            .OrderByDescending(p => p.DateCreated)
+                            .ToListAsync();
+
+            return allPosts;
+        }
+
         public async Task UpdateUserProfilePicture(int userId, string profilePictureUrl)
         {
             var userDb = await _context.Users
@@ -35,5 +52,7 @@ namespace CircleApp.Data.Services
                 await _context.SaveChangesAsync();
             }
         }
+
+
     }
 }

@@ -12,5 +12,7 @@ namespace CircleApp.Data.Services
         Task<User> GetUser(int loggedInUserId);
 
         Task UpdateUserProfilePicture(int userId, string profilePictureUrl);
+
+        Task<List<Post>> GetUserPosts(int userId);
     }
 }
