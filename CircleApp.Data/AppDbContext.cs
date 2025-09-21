@@ -21,6 +21,9 @@ namespace CircleApp.Data
         public DbSet<Report> Reports { get; set; }
         public DbSet<Story> Stories { get; set; }
         public DbSet<HashTag> Hashtags { get; set; }
+
+        public DbSet<FriendRequest> FriendRequests { get; set; }
+        public DbSet<Friendship> Friendships { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -113,6 +116,34 @@ namespace CircleApp.Data
             modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
             modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
             modelBuilder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
+
+            //Friendship conf
+            modelBuilder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Sender)
+                .WithMany()
+                .HasForeignKey(fr => fr.SenderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+
+            modelBuilder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Receiver)
+                .WithMany()
+                .HasForeignKey(fr => fr.ReceiverId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Friendship>()
+                .HasOne(f => f.Sender)
+                .WithMany()
+                .HasForeignKey(f => f.SenderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+
+            modelBuilder.Entity<Friendship>()
+                .HasOne(f => f.Receiver)
+                .WithMany()
+                .HasForeignKey(f => f.ReceiverId)
+                .OnDelete(DeleteBehavior.Cascade);
+
 
         }
 

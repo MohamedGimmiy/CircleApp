@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Views\Shared\Sidebar\" />
     <Folder Include="wwwroot\images\Uploaded\" />
   </ItemGroup>
 
