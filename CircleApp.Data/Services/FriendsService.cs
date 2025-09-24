@@ -1,6 +1,7 @@
 ﻿
 
 
+using CircleApp.Data.Dtos;
 using CircleApp.Data.Helpers.Constants;
 using CircleApp.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -66,8 +67,82 @@ namespace CircleApp.Data.Services
                 _context.Friendships.Remove(friendship);
                 await _context.SaveChangesAsync();
 
+                // find requests
+                var requests = await _context.FriendRequests
+                    .Where(r => (r.SenderId == friendship.SenderId && r.ReceiverId == friendship.ReceiverId) ||
+                    (r.SenderId == friendship.ReceiverId && r.ReceiverId == friendship.SenderId))
+                    .ToListAsync();
+
+                if (requests.Any())
+                {
+                    _context.FriendRequests.RemoveRange(requests);
+                    await _context.SaveChangesAsync();
+                }
             }
         }
 
+        public async Task<List<UserWithFriendsCountDto>> GetSuggestedFriendsAsync(int userId)
+        {
+            var existingFriendIds = await _context.Friendships
+                .Where(n => n.SenderId == userId || n.ReceiverId == userId)
+                .Select(n => n.SenderId == userId? n.ReceiverId : n.SenderId)
+                .ToListAsync();
+
+            // pending requests
+            var pendingRequests = await _context.FriendRequests
+                .Where(n => (n.SenderId == userId || n.ReceiverId == userId) && n.Status == FriendshipStatus.Pending)
+                .Select(n => n.SenderId == userId ? n.ReceiverId : n.SenderId)
+                .ToListAsync();
+
+            //get suggested friends
+            var suggestedFriends = await _context.Users
+                .Where(n=> n.Id != userId 
+                && !existingFriendIds.Contains(n.Id) 
+                && !pendingRequests.Contains(n.Id))
+                .Select(u=>new UserWithFriendsCountDto()
+                {
+                    User = u,
+                    FriendsCount = _context.Friendships
+                    .Count(f => f.SenderId == u.Id || f.ReceiverId == u.Id)
+                })
+                .Take(5)
+                .ToListAsync();
+
+            return suggestedFriends;
+        }
+
+
+        public async Task<List<FriendRequest>> GetSentFriendRequestAsync(int userId)
+        {
+            var friendRequestsSent = await _context.FriendRequests
+                .Include(n => n.Sender)
+                .Include(n => n.Receiver)
+                .Where(f => f.SenderId == userId && f.Status == FriendshipStatus.Pending)
+                .ToListAsync();
+
+            return friendRequestsSent;  
+        }
+
+        public async Task<List<FriendRequest>> GetReceivedFriendRequestAsync(int userId)
+        {
+            var friendRequestsReceived = await _context.FriendRequests
+                .Include(n => n.Sender)
+                .Include(n => n.Receiver)
+                .Where(f => f.ReceiverId == userId && f.Status == FriendshipStatus.Pending)
+                .ToListAsync();
+
+            return friendRequestsReceived;
+        }
+
+        public async Task<List<Friendship>> GetFriendsAsync(int userId)
+        {
+            var friends = await _context.Friendships
+                .Include(n => n.Sender)
+                .Include(n => n.Receiver)
+                .Where(n => n.SenderId == userId || n.ReceiverId == userId)
+                .ToListAsync();
+
+            return friends;
+        }
     }
 }
