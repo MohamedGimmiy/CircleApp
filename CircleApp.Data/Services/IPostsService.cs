@@ -1,4 +1,5 @@
 ﻿
+using CircleApp.Data.Dtos;
 using CircleApp.Data.Models;
 using Microsoft.AspNetCore.Http;
 
@@ -15,8 +16,8 @@ namespace CircleApp.Data.Services
         Task RemovePostCommentAsync(int commentId);
         Task<Post> RemovePostAsync(int postId);
 
-        Task TogglePostLikeAsync(int postId, int userId);
-        Task TogglePostFavoriteAsync(int postId, int userId);
+        Task<GetNotificationDto> TogglePostLikeAsync(int postId, int userId);
+        Task<GetNotificationDto> TogglePostFavoriteAsync(int postId, int userId);
         Task ReportPostAsync(int postId, int userId);
         Task TogglePostVisibilityAsync(int postId, int userId);
     }

@@ -1,10 +1,13 @@
 ﻿using CircleApp.Data;
 using CircleApp.Data.Helpers;
+using CircleApp.Data.Hubs;
 using CircleApp.Data.Models;
 using CircleApp.Data.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,12 +19,14 @@ var dbConnectionString = builder.Configuration.GetConnectionString("Default");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(dbConnectionString));
 
 //Services
+builder.Services.AddScoped<INotificationsService, NotificationsService>();
 builder.Services.AddScoped<IPostsService, PostsService>();
 builder.Services.AddScoped<IHashtagsService, HashtagsService>();
 builder.Services.AddScoped<IStoriesService, StoriesService>();
 builder.Services.AddScoped<IFilesService, FilesService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IFriendsService, FriendsService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 //Identity configuration
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 {
@@ -55,14 +60,15 @@ builder.Services
         options.ClientId = builder.Configuration["Auth:GitHub:ClientId"] ?? "";
         options.ClientSecret = builder.Configuration["Auth:GitHub:ClientSecret"] ?? "";
         options.CallbackPath = "/signin-github";
-        options.AuthorizationEndpoint = "https://github.com/login/oauth/authorize?scope=user:email";
+        options.Scope.Add("user:email");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
 
     });
 
     
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
-
+builder.Services.AddSignalR();
 
 
 var app = builder.Build();
@@ -100,4 +106,5 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+app.MapHub<NotificationHub>("/notificationHub");
 app.Run();

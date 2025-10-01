@@ -3,17 +3,22 @@ using CircleApp.Data.Helpers.Constants;
 using CircleApp.Data.Models;
 using CircleApp.Data.Services;
 using CircleApp.ViewModels.Friends;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CircleApp.Controllers
 {
+    [Authorize(Roles = AppRoles.User)]
+
     public class FriendsController : BaseController
     {
         public readonly IFriendsService _friendsService;
+        private readonly INotificationsService _notificationsService;
 
-        public FriendsController(IFriendsService friendsService)
+        public FriendsController(IFriendsService friendsService, INotificationsService notificationsService)
         {
             _friendsService = friendsService;
+            _notificationsService = notificationsService;
         }
 
 
@@ -35,17 +40,29 @@ namespace CircleApp.Controllers
         public async Task<IActionResult> SendFriendRequest(int receiverId)
         {
             var userId = GetUserId();
+            var userName = GetUserFullName();
             if (!userId.HasValue)
                 RedirectToLogin();
 
             await _friendsService.SendRequestAsync(userId.Value, receiverId);
-
+            await _notificationsService.AddNotificationAsync(receiverId, 
+                NotificationType.FriendRequest, userName, null);
             return RedirectToAction("Index", "Home");
         }
         [HttpPost]
         public async Task<IActionResult> UpdateFriendRequest(int requestId,string status)
         {
-            await _friendsService.UpdateRequestAsync(requestId, status);
+            var userId = GetUserId();
+            var userName = GetUserFullName();
+            if (!userId.HasValue)
+                RedirectToLogin();
+            var request = await _friendsService.UpdateRequestAsync(requestId, status);
+
+            if(status == FriendshipStatus.Accepted)
+            {
+                await _notificationsService.AddNotificationAsync(request.SenderId,
+                NotificationType.FriendRequestApproved, userName, null);
+            }
             return RedirectToAction("Index");
         }
 
